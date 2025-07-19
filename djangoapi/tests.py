@@ -18,10 +18,40 @@ class UserRegistrationTest(APITestCase):
 class AnimalAPITest(APITestCase):
     def test_create_animal(self):
         url = reverse('animal-list')
-        data = {'name': 'Max', 'age': 5,
-                'animal_type': 'dog', 'breed': 'Bulldog'}
+        data = {
+            'name': 'Max',
+            'age': 5,
+            'animal_type': 'dog',  # Make sure 'animal_type' is included
+            'breed': 'Bulldog'     # 'breed' should only be for Dog
+        }
+
         response = self.client.post(url, data, format='json')
+
+        # Check if the response status code is 201 (Created)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # Ensure the correct fields are returned in the response
+        self.assertEqual(response.data['name'], 'Max')
+        self.assertEqual(response.data['age'], 5)
+        self.assertEqual(response.data['animal_type'], 'dog')
+        self.assertEqual(response.data['breed'], 'Bulldog')
+
+    def test_create_invalid_animal_type(self):
+        url = reverse('animal-list')
+
+        # Test data with invalid 'animal_type' (should fail)
+        data = {
+            'animal_type': 'elephant',  # Invalid animal type
+            'name': 'Max',
+            'age': 5,
+            'breed': 'Bulldog'
+        }
+
+        response = self.client.post(url, data, format='json')
+
+        # Ensure the response is 400 Bad Request due to invalid 'animal_type'
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('animal_type', response.data)
 
 
 class UserViewSetTests(APITestCase):

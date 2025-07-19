@@ -5,8 +5,9 @@ from rest_framework.response import Response
 from rest_framework.authentication import TokenAuthentication
 from django.core.mail import send_mail
 from rest_framework import viewsets
-from .models import Animal, Dog, Cat
-from .serializers import AnimalSerializer, DogSerializer, CatSerializer
+from .models import Animal
+from .serializers import AnimalPolymorphicSerializer
+from rest_framework.exceptions import NotFound, ValidationError
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -68,11 +69,45 @@ class UserViewSet(viewsets.ModelViewSet):
 
 class AnimalViewSet(viewsets.ModelViewSet):
     queryset = Animal.objects.all()
-    serializer_class = AnimalSerializer
+    serializer_class = AnimalPolymorphicSerializer
+    lookup_field = 'id'
 
-    def get_serializer_class(self):
-        if isinstance(self.get_object(), Dog):
-            return DogSerializer
-        elif isinstance(self.get_object(), Cat):
-            return CatSerializer
-        return AnimalSerializer
+    def get_object(self):
+        """
+        Override this method if you want to handle optional lookup for 'id'.
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup_url_kwarg = self.lookup_field
+
+        if not self.kwargs.get(lookup_url_kwarg):
+            return queryset.first()  # Return the first object if no 'id' is provided
+
+        return super().get_object()
+
+    def perform_create(self, serializer):
+        """
+        Override to handle creating an animal. Ensure 'animal_type' is included.
+        """
+        animal_type = self.request.data.get('animal_type')
+        if not animal_type:
+            raise ValidationError({"animal_type": "This field is required."})
+
+        if animal_type not in ['dog', 'cat', 'animal']:
+            raise ValidationError(
+                {"animal_type": f"Invalid animal type: {animal_type}"})
+
+        serializer.save()
+
+    def create(self, request, *args, **kwargs):
+        """
+        Override the create method to handle creation with validation.
+        """
+        animal_type = request.data.get('animal_type')
+        if not animal_type:
+            raise ValidationError({"animal_type": "This field is required."})
+
+        if animal_type not in ['dog', 'cat', 'animal']:  # Add valid animal types here
+            raise ValidationError(
+                {"animal_type": f"Invalid animal type: {animal_type}"})
+
+        return super().create(request, *args, **kwargs)
