@@ -1,13 +1,20 @@
+from django.core.mail import send_mail
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.authentication import TokenAuthentication
+from rest_framework import serializers
+from django.contrib.auth.models import User
 from django.contrib.auth.models import User
 from rest_framework import serializers, viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.authentication import TokenAuthentication
 from django.core.mail import send_mail
-from rest_framework import viewsets
 from .models import Animal
 from .serializers import AnimalPolymorphicSerializer
-from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.exceptions import ValidationError
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -32,15 +39,24 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            # Send a welcome email after successful registration
-            send_mail(
-                'Welcome to Our Site',
-                'Thank you for registering with us.',
-                'from@example.com',
-                [user.email],
-                fail_silently=False,
-            )
-            return Response({"detail": "User created successfully!"})
+            try:
+                # Validate email before sending
+                # Raises ValidationError if email is invalid
+                validate_email(user.email)
+
+                # Send a welcome email after successful registration
+                send_mail(
+                    'Welcome to Our Site',
+                    'Thank you for registering with us.',
+                    'from@example.com',
+                    [user.email],
+                    fail_silently=False,  # Raises an exception if email cannot be sent
+                )
+                return Response({"detail": "User created successfully!"})
+            except ValidationError as e:
+                return Response({"error": f"Invalid email format: {str(e)}"}, status=400)
+            except Exception as e:
+                return Response({"error": f"Failed to send email: {str(e)}"}, status=500)
         return Response(serializer.errors, status=400)
 
     @action(detail=False, methods=['post'])
@@ -54,15 +70,20 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({"error": "Email is required"}, status=400)
 
         try:
+            # Validate email format before sending
+            validate_email(email)  # Raises ValidationError if email is invalid
+
             # Send the email
             send_mail(
                 subject,
                 message,
                 'from@example.com',  # Use a proper sender email
                 [email],
-                fail_silently=False,
+                fail_silently=False,  # Will raise an exception if email cannot be sent
             )
             return Response({"detail": "Email sent successfully!"})
+        except ValidationError as e:
+            return Response({"error": f"Invalid email format: {str(e)}"}, status=400)
         except Exception as e:
             return Response({"error": f"Failed to send email: {str(e)}"}, status=500)
 
