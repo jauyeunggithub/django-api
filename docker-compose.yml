@@ -1,13 +1,18 @@
-version: "3.8"
-
 services:
-  web:
+  app:
     build: .
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
-      - .:/app
+      - .:/app # Mount the current directory into the container
     ports:
-      - "8000:8000"
+      - "8000:8000" # Map host port 8000 to container port 8000
     environment:
       - DEBUG=True
-    working_dir: /app # Ensure correct working directory
+      # Add any other necessary environment variables for DB or other services
+      # - DATABASE_URL=postgres://user:password@db:5432/mydatabase
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
