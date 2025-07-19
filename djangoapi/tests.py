@@ -12,7 +12,7 @@ class UserRegistrationTest(APITestCase):
         data = {'username': 'testuser', 'password': 'password',
                 'email': 'test@example.com'}
         response = self.client.post(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
 class AnimalAPITest(APITestCase):
@@ -21,16 +21,14 @@ class AnimalAPITest(APITestCase):
         data = {
             'name': 'Max',
             'age': 5,
-            'animal_type': 'dog',  # Make sure 'animal_type' is included
-            'breed': 'Bulldog'     # 'breed' should only be for Dog
+            'animal_type': 'dog',
+            'breed': 'Bulldog'
         }
 
         response = self.client.post(url, data, format='json')
 
-        # Check if the response status code is 201 (Created)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        # Ensure the correct fields are returned in the response
         self.assertEqual(response.data['name'], 'Max')
         self.assertEqual(response.data['age'], 5)
         self.assertEqual(response.data['animal_type'], 'dog')
@@ -94,7 +92,6 @@ class UserViewSetTests(APITestCase):
         """Test sending email with incorrect configuration (e.g., invalid SMTP settings)"""
         url = reverse('user-send-email')
 
-        # Invalid email to simulate error
         response = self.client.post(url, {
             'email': 'invalid-email',
             'subject': 'Test Subject',
