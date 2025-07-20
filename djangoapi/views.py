@@ -92,6 +92,8 @@ class AnimalViewSet(viewsets.ModelViewSet):
     queryset = Animal.objects.all()
     serializer_class = AnimalPolymorphicSerializer
     lookup_field = 'id'
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = [TokenAuthentication]
 
     def get_object(self):
         """

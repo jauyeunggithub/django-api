@@ -4,18 +4,47 @@ from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.contrib.auth.models import User
+from unittest.mock import patch
+from rest_framework.authtoken.models import Token
 
 
 class UserRegistrationTest(APITestCase):
-    def test_user_registration(self):
+    def test_user_registration_success(self):
+        """Test user registration with valid data and email sent"""
         url = reverse('user-register')
         data = {'username': 'testuser', 'password': 'password',
                 'email': 'test@example.com'}
-        response = self.client.post(url, data, format='json')
+
+        with patch('django.core.mail.send_mail') as mock_send_mail:
+            response = self.client.post(url, data, format='json')
+
+        # Assert user is created successfully
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['detail'], 'User created successfully!')
+
+        # Assert email is sent
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].subject, 'Welcome to Our Site')
+
+    def test_user_registration_invalid_email(self):
+        """Test user registration with invalid email"""
+        url = reverse('user-register')
+        data = {'username': 'testuser', 'password': 'password',
+                'email': 'invalid-email'}
+
+        response = self.client.post(url, data, format='json')
+
+        # Assert that the response status is 400 Bad Request
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class AnimalAPITest(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='testuser', password='password', email='test@example.com')
+        self.token = Token.objects.create(user=self.user)
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + self.token.key)
+
     def test_create_animal(self):
         url = reverse('animal-list')
         data = {
